@@ -241,52 +241,10 @@ proc hiho {} {
   return [image create photo -format GIF -data $logoData]
 }
 
-# Name and hide this stupid window.
-wm title . "stupid window"
-set img [hiho]
-label .l -image $img
-pack .l
-# Uncomment this to hide the stupid window.
-#wm iconify .
-
-# Do not show hidden directories.
-catch {tk_getSaveFile foo bar}
-set ::tk::dialog::file::showHiddenVar 0
-set ::tk::dialog::file::showHiddenBtn 1
-
-set fileName [tk_getSaveFile -title "Enter facet file name." -defaultextension ".facet"]
-
-if { $fileName == "" } {
-  puts ""
-  puts "You must provide a file name to continue"
-  puts ""
-  exit
-}
-
-# Check for extension, add one if necessary.
-#if { [file extension $fileName] == "" } {
-#  append fileName ".facet"
-#}
-
-# Get facet file directory name.
-set baseName [file dirname $fileName]
-
-# Derive geometry.params file location.
-set geomFile [append baseName "/geometry.params"]
-
 # TODO: check if this works, die cleanly if it doesn't.
 set retValue [source [file join [file dirname [info script]] "/home/ehereth/Grid/dev/Glyph/GridCoordEnum/pwio.glf"]]
 
-set facetFp [open $fileName w]
-set geomFp [open $geomFile w]
-
-puts $facetFp "FACET FILE V3.0  Boundary data in Xpatch format from Pointwise via Glyph script BlockToFacet.glf"
-
-puts $facetFp "1\nGrid\n0, 0.00, 0.00, 0.00, 0.00"
-
 puts "Beginning blockToFacet script..."
-puts "Writing facet file: $fileName"
-puts "Writing geometry file: $geomFile"
 
 # Create a block selection mask.
 set mask [pw::Display createSelectionMask -requireBlock {}];
@@ -365,6 +323,45 @@ if { [pw::Display selectEntities \
     }
   }
 
+  # Name and hide this stupid window.
+  wm title . "stupid window"
+  #set img [image create photo rageFace -file [file join [file dirname [info script]] "RageFaceBlack.gif"]]
+  set img [hiho]
+  label .l -image $img
+  pack .l
+  # Uncomment this to hide the stupid window.
+  #wm iconify .
+
+  # Do not show hidden directories.
+  catch {tk_getSaveFile foo bar}
+  set ::tk::dialog::file::showHiddenVar 0
+  set ::tk::dialog::file::showHiddenBtn 1
+
+  set fileName [tk_getSaveFile -title "Enter facet file name." -defaultextension ".facet"]
+
+  if { $fileName == "" } {
+    puts ""
+    puts "You must provide a file name to continue"
+    puts ""
+    exit
+  }
+
+  # Check for extension, add one if necessary.
+  #if { [file extension $fileName] == "" } {
+  #  append fileName ".facet"
+  #}
+
+  # Get facet file directory name.
+  set baseName [file dirname $fileName]
+
+  # Derive geometry.params file location.
+  set geomFile [append baseName "/geometry.params"]
+
+  puts "Writing facet file: $fileName"
+  puts "Writing geometry file: $geomFile"
+
+  set geomFp [open $geomFile w]
+
   # Write geometry.params parameter file.
   puts $geomFp "Number of boundaries\n$nBcs"
   puts $geomFp "Boundary #   Layers     g_space     n_space             boundary name"
@@ -374,6 +371,12 @@ if { [pw::Display selectEntities \
     puts $geomFp [lindex $geomParams $iBc]
   }
   close $geomFp
+
+  set facetFp [open $fileName w]
+
+  puts $facetFp "FACET FILE V3.0  Boundary data in Xpatch format from Pointwise via Glyph script BlockToFacet.glf"
+
+  puts $facetFp "1\nGrid\n0, 0.00, 0.00, 0.00, 0.00"
 
   # Begin the export process.
   pwio::beginIO $doms
