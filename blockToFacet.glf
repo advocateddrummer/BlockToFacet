@@ -380,13 +380,29 @@ if { [pw::Display selectEntities \
   # Write out number of nodes.
   puts $facetFp $coordCount
 
+  #set coordTotalTime [pwu::Time set 0]
+  #set xyzTotalTime [pwu::Time set 0]
+
   # Write out coordinates.
+  puts "Writing out coordinates..."
+
+  set startTime [pwu::Time now]
   for {set iCoord 1} {$iCoord <= $coordCount} {incr iCoord} {
+    #set coordStartTime [pwu::Time now]
     set coord [pwio::getCoord $iCoord]
+    #set coordTotalTime [pwu::Time add $coordTotalTime [pwu::Time elapsed $coordStartTime]]
+
+    #set xyzStartTime [pwu::Time now]
     set xyz [pw::Grid getXYZ $coord]
+    #set xyzTotalTime [pwu::Time add $xyzTotalTime [pwu::Time elapsed $xyzStartTime]]
 
     puts $facetFp [format "%.15e% .15e %.15e" [lindex $xyz 0] [lindex $xyz 1] [lindex $xyz 2]]
   }
+  set totalTime [pwu::Time elapsed $startTime]
+  puts "Coordinates written. ($totalTime seconds)"
+
+  #puts "getCoord took [pwu::Time double $coordTotalTime] seconds"
+  #puts "getXYZ took [pwu::Time double $xyzTotalTime] seconds"
 
   # Write out number of 'blocks'.
   if { $nTri && $nQuad } {
@@ -397,8 +413,12 @@ if { [pw::Display selectEntities \
 
   set nCell 0
 
+  #set cellTotalTime [pwu::Time set 0]
   # Write out triangle block if there are triangles.
   if { $nTri } {
+    puts "Writing out triangles..."
+
+    set startTime [pwu::Time now]
     puts $facetFp "Triangles\n$nTri 3"
 
     foreach dom $doms {
@@ -412,14 +432,23 @@ if { [pw::Display selectEntities \
 
       for {set iCell 1} {$iCell <= $cellCount} {incr iCell} {
         incr nCell
+        #set cellStartTime [pwu::Time now]
         set cell [pwio::getEntityCell $dom $iCell]
+        #set cellTotalTime [pwu::Time add $cellTotalTime [pwu::Time elapsed $cellStartTime]]
         puts $facetFp [format "   %8d %8d %8d 0 %4d %d" [lindex $cell 0] [lindex $cell 1] [lindex $cell 2] [dict get $domToBC $dom] $nCell]
       }
     }
+    set totalTime [pwu::Time elapsed $startTime]
+    puts "Triangles written. ($totalTime seconds)"
+    #puts "getEntityCell took [pwu::Time double $cellTotalTime] seconds"
   }
 
+  #set cellTotalTime [pwu::Time set 0]
   # Write out quadrilateral block if there are quadrilaterals.
   if { $nQuad } {
+    puts "Writing out quadrilaterals..."
+
+    set startTime [pwu::Time now]
     puts $facetFp "Quadrilaterals\n$nQuad 4"
 
     foreach dom $doms {
@@ -433,10 +462,15 @@ if { [pw::Display selectEntities \
 
       for {set iCell 1} {$iCell <= $cellCount} {incr iCell} {
         incr nCell
+        #set cellStartTime [pwu::Time now]
         set cell [pwio::getEntityCell $dom $iCell]
+        #set cellTotalTime [pwu::Time add $cellTotalTime [pwu::Time elapsed $cellStartTime]]
         puts $facetFp [format "   %8d %8d %8d %8d 0 %4d %d" [lindex $cell 0] [lindex $cell 1] [lindex $cell 2] [lindex $cell 3] [dict get $domToBC $dom] $nCell]
       }
     }
+    set totalTime [pwu::Time elapsed $startTime]
+    puts "Quadrilaterals written ($totalTime seconds)"
+    #puts "getEntityCell took [pwu::Time double $cellTotalTime] seconds"
   }
 } else {
   puts "ERROR: You must select at least one block, exiting."
