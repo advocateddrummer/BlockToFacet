@@ -2,7 +2,7 @@ package require PWI_Glyph 2.17.1
 
 pw::Script loadTk
 
-proc hiho {} {
+proc stupidWindowImage {} {
   set logoData "
   R0lGODlhuQDQAPf/AAAAAAEBAQICAgMDAwQEBAUFBQYGBgcHBwgICAkJCQoKCgsLCwwMDA0NDQ4O
   Dg8PDxAQEBERERISEhMTExQUFBUVFRYWFhcXFxgYGBkZGRoaGhsbGxwcHB0dHR4eHh8fHyAgICEh
@@ -325,8 +325,7 @@ if { [pw::Display selectEntities \
 
   # Name and hide this stupid window.
   wm title . "stupid window"
-  #set img [image create photo rageFace -file [file join [file dirname [info script]] "RageFaceBlack.gif"]]
-  set img [hiho]
+  set img [stupidWindowImage]
   label .l -image $img
   pack .l
   # Uncomment this to hide the stupid window.
@@ -345,11 +344,6 @@ if { [pw::Display selectEntities \
     puts ""
     exit
   }
-
-  # Check for extension, add one if necessary.
-  #if { [file extension $fileName] == "" } {
-  #  append fileName ".facet"
-  #}
 
   # Get facet file directory name.
   set baseName [file dirname $fileName]
@@ -445,12 +439,14 @@ if { [pw::Display selectEntities \
     }
   }
 } else {
-  puts "ERROR: You must select at least one block."
+  puts "ERROR: You must select at least one block, exiting."
+  pwio::endIO
+  exit
 }
 
 close $facetFp
 
-puts "Bye bye..."
+puts "BlockToFacet export complete."
 
 # Kill the stupid little window that pops up with the file selector dialog for
 # some reason.
