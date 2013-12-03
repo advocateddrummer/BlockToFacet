@@ -482,8 +482,6 @@ close $facetFp
 
 puts "BlockToFacet export complete."
 
-# Kill the stupid little window that pops up with the file selector dialog for
-# some reason.
-destroy .
-
 pwio::endIO
+
+exit
