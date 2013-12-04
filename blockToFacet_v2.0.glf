@@ -449,10 +449,13 @@ for {set iBlock 0} {$iBlock < $nBlocks} {incr iBlock} {
   set nElem [lindex $tmp 0]
   set elemType [lindex $tmp 1]
 
-  if { $elemType == 3 } {
+  if { $elemType == 3 } { # Triangles.
     set fmt "   %8d %8d %8d %2d  %04d %2d"
-  } else {
+  } elseif { $elemType == 4 } { # Quadrilaterals.
     set fmt "   %8d %8d %8d %8d %2d  %04d %2d"
+  } else { # Something else.
+    puts "Error: invalid element type with $elemType edges detected...  exiting."
+    exit
   }
 
   # Calculate index into cell array of domain id (to be replaced by BC id.)
