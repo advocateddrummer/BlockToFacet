@@ -260,9 +260,11 @@ if { [pw::Display selectEntities \
   # determine which ones we actually need below.
   set bcNames [pw::BoundaryCondition getNames]
   set nBcs 0
+  set nDoms 0
 
   list geomParams
 
+  puts "Begin parsing boundary conditions."
   set bcStartTime [pwu::Time now]
   # Loop over boundary conditions and determine which ones to export.
   foreach bcName $bcNames {
@@ -293,14 +295,19 @@ if { [pw::Display selectEntities \
           }
         }
 
+        incr nBcs
+        # Since we are counting required boundary conditions as we go, save off
+        # the following string to a list to be written to file later.
+        lappend geomParams [format "%10d %10d %11d %11s %-s" $bcId 0 1 "1e-6" $bcName]
+
         set ents [$bc getEntities]
 
         foreach dom $ents {
-          incr nBcs
+          incr nDoms
 
-          # Since we are counting required boundary conditions as we go, save off
-          # the following string to a list to be written to file later.
-          lappend geomParams [format "%10d %10d %11d %11s %-s" $nBcs 0 1 "1e-6" $bcName]
+          # Create domain id to BC id map to be used while post processing the
+          # facet file.
+          dict set domToBC $nDoms $bcId
 
           lappend doms $dom
         }
@@ -310,6 +317,7 @@ if { [pw::Display selectEntities \
   }
   set bcTotalTime [pwu::Time elapsed $bcStartTime]
   puts "Parsing boundary conditions complete. ($bcTotalTime seconds)"
+  puts ""
 
   # Name and hide this stupid window.
   wm title . "stupid window"
@@ -339,6 +347,7 @@ if { [pw::Display selectEntities \
   # Derive geometry.params file location.
   set geomFile [append baseName "/geometry.params"]
 
+  puts "Begin facet file export."
   puts "Writing facet file: $fileName"
   puts "Writing geometry file: $geomFile"
 
@@ -354,9 +363,17 @@ if { [pw::Display selectEntities \
   }
   close $geomFp
 
+  # Create a (hopefully portable) temporary file.
+  set tmpdir [pwd]
+  if {[file exists "/tmp"]} { set tmpdir "/tmp"}
+  catch {set tmpdir $::env(TMP)}
+  catch {set tmpdir $::env(TEMP)}
+  set tempFile [file join $tmpdir "blockToFacet.[pid]" ]
+  puts "(Writing to temporary file $tempFile)"
+
   set io [pw::Application begin GridExport $doms]
 
-  $io initialize -type Xpatch $fileName
+  $io initialize -type Xpatch $tempFile
 
   if { [$io verify] != 1 } {
     puts "Error: io verify failed... exiting"
@@ -375,6 +392,7 @@ if { [pw::Display selectEntities \
   $io write
   set writeTotalTime [pwu::Time elapsed $writeStartTime]
   puts "Facet file export complete. ($writeTotalTime seconds)"
+  puts ""
 
   if { [$io getDetails] != "" } {
     puts "Error: [$io getDetails]"
@@ -388,6 +406,83 @@ if { [pw::Display selectEntities \
   puts "ERROR: You must select at least one block, exiting."
   exit
 }
+
+# Post process temporary file.
+puts "Beginning facet file post-processing."
+puts "    Replacing $nDoms domains tags with $nBcs BC tags."
+set writeStartTime [pwu::Time now]
+
+set tempFp [open $tempFile "r"]
+set facetFp [open $fileName "w"]
+
+# Copy header information.
+puts $facetFp [gets $tempFp]
+puts $facetFp [gets $tempFp]
+puts $facetFp [gets $tempFp]
+puts $facetFp [gets $tempFp]
+
+# Get number of coordinates.
+set numPts [gets $tempFp]
+puts $facetFp $numPts
+
+# Write out the coordinates.
+for {set iPt 0} {$iPt < $numPts} {incr iPt} {
+  puts $facetFp [gets $tempFp]
+}
+
+# Get number of 'blocks'.
+set nBlocks [gets $tempFp]
+puts $facetFp $nBlocks
+
+for {set iBlock 0} {$iBlock < $nBlocks} {incr iBlock} {
+# Triangles or Quadrilaterals.
+  puts $facetFp [gets $tempFp]
+
+  # Get cell type and count.
+  set tmp [split [gets $tempFp] " "]
+  puts $facetFp $tmp
+
+  set nElem [lindex $tmp 0]
+  set elemType [lindex $tmp 1]
+
+  if { $elemType == 3 } {
+    set fmt "   %8d %8d %8d %2d  %04d %2d"
+  } else {
+    set fmt "   %8d %8d %8d %8d %2d  %04d %2d"
+  }
+
+  # Calculate index into cell array of domain id (to be replaced by BC id.)
+  set index [expr {$elemType + 1}]
+
+  # Write out connectivity, swapping domain id for BC id.
+  for {set iConn 0} {$iConn < $nElem} {incr iConn} {
+    set cell [gets $tempFp]
+    #set cell [regsub -all {(^\s*\d+\s+\d+\s+\d+\s+\d+\s+0\s+)(\d+)(.$)} $cell [\1 [dict get $domToBC \2] \3]]
+
+    # This is a working regex... looks like I might not need it...
+    #set found [regexp {(^\s*\d+\s+\d+\s+\d+\s+\d+\s+0\s+)(\d+)(.*$)} $cell match first domId last]
+    #puts "found = $found"
+    #puts "matched line <<$match>>"
+    #puts $first
+    #puts "<<<$domId>>>"
+    #puts $last
+    #set domId [string trimleft $domId "0"]
+    #puts "<<<$domId>>>"
+
+    set domId [string trimleft [lindex $cell $index] "0"]
+    lset cell $index [dict get $domToBC $domId]
+    puts $facetFp [format $fmt {*}$cell]
+  }
+}
+
+close $facetFp
+close $tempFp
+
+# Delete temporary file.
+file delete $tempFile
+set writeTotalTime [pwu::Time elapsed $writeStartTime]
+puts "Post-processing complete. ($writeTotalTime seconds)"
+puts ""
 
 set totalTime [pwu::Time elapsed $startTime]
 puts "BlockToFacet export complete. ($totalTime seconds)"
