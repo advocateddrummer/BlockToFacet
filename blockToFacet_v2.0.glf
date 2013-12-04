@@ -278,10 +278,18 @@ if { [pw::Display selectEntities \
     set nRegs [$bc getRegisterCount]
     set regs [$bc getRegisters]
 
+    #puts "*********************************************************************"
+    #puts "For boundary $bcName with tag $bcId"
+    #puts "    the number of registers is $nRegs"
+    #puts "    the registers are $regs"
+    #puts "*********************************************************************"
+
     # Check for unspecified boundary conditions; these will be skipped and the
     # user will be warned. All boundary conditions that are to be exported MUST
-    # be specified.
-    if { $bcName == "Unspecified" } {
+    # be specified. NOTE: the 'Unspecified' boundary comes up even if it is
+    # empty, hence the '$nRegs != 0' below to avoid printing the message
+    # unnecessarily.
+    if { $bcName == "Unspecified" && $nRegs != 0 } {
       puts ""
       puts "*********************************************************************"
       puts "WARNING: Unspecified boundary condition(s) detected."
