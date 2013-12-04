@@ -259,7 +259,8 @@ if { [pw::Display selectEntities \
   set startTime [pwu::Time now]
   set totalTime [pwu::Time set 0]
 
-  puts "    Selected [llength $selected(Blocks)] blocks for export."
+  set blockString [expr { ([llength $selected(Blocks)] == 1) ? "block" : "blocks"}]
+  puts "    Selected [llength $selected(Blocks)] $blockString for export."
 
   # NOTE: this is ALL boundary conditions in the Pointwise project; we will
   # determine which ones we actually need below.
