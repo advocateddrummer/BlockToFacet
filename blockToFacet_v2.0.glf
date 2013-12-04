@@ -253,6 +253,7 @@ if { [pw::Display selectEntities \
      selected] } {
 
   set startTime [pwu::Time now]
+  set totalTime [pwu::Time set 0]
 
   puts "    Selected [llength $selected(Blocks)] blocks for export."
 
@@ -323,6 +324,10 @@ if { [pw::Display selectEntities \
   puts "Parsing boundary conditions complete. ($bcTotalTime seconds)"
   puts ""
 
+  # Do not time the file save dialog to make time reporting (insignificantly?)
+  # more accurate.
+  set totalTime [pwu::Time add $totalTime [pwu::Time elapsed $startTime]]
+
   # Name and hide this stupid window.
   wm title . "stupid window"
   set img [stupidWindowImage]
@@ -344,6 +349,9 @@ if { [pw::Display selectEntities \
     puts ""
     exit
   }
+
+  # Restart timer.
+  set startTime [pwu::Time now]
 
   # Get facet file directory name.
   set baseName [file dirname $fileName]
@@ -491,7 +499,7 @@ set writeTotalTime [pwu::Time elapsed $writeStartTime]
 puts "Post-processing complete. ($writeTotalTime seconds)"
 puts ""
 
-set totalTime [pwu::Time elapsed $startTime]
+set totalTime [pwu::Time double [pwu::Time add $totalTime [pwu::Time elapsed $startTime]]]
 puts "BlockToFacet export complete. ($totalTime seconds)"
 
 exit
