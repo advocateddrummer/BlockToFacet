@@ -1,3 +1,7 @@
+# BlockToFacet.glf
+# Author: Ethan Alan Hereth
+# Contact: ethan-hereth@utc.edu
+
 package require PWI_Glyph 2.17.1
 
 pw::Script loadTk
