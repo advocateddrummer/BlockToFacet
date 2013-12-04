@@ -353,7 +353,13 @@ if { [pw::Display selectEntities \
   set ::tk::dialog::file::showHiddenVar 0
   set ::tk::dialog::file::showHiddenBtn 1
 
-  set fileName [tk_getSaveFile -title "Enter facet file name." -defaultextension ".facet"]
+  # Set up file type filter.
+  set fileTypes {
+    { {Facet Files} {.facet} }
+    { {All Files}   * }
+  }
+
+  set fileName [tk_getSaveFile -title "Enter facet file name." -filetypes $fileTypes -defaultextension ".facet"]
 
   if { $fileName == "" } {
     puts ""
