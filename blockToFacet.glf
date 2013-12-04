@@ -1,3 +1,7 @@
+# BlockToFacet.glf
+# Author: Ethan Alan Hereth
+# Contact: ethan-hereth@utc.edu
+
 package require PWI_Glyph 2.17.1
 
 pw::Script loadTk
@@ -276,27 +280,33 @@ if { [pw::Display selectEntities \
     set nRegs [$bc getRegisterCount]
     set regs [$bc getRegisters]
 
+    # Check for unspecified boundary conditions; these will be skipped and the
+    # user will be warned. All boundary conditions that are to be exported MUST
+    # be specified. NOTE: the 'Unspecified' boundary comes up even if it is
+    # empty, hence the '$nRegs != 0' below to avoid printing the message
+    # unnecessarily.
+    if { $bcName == "Unspecified" && $nRegs != 0 } {
+      puts ""
+      puts "*********************************************************************"
+      puts "WARNING: Unspecified boundary condition(s) detected."
+      puts "All Unspecified boundary conditions will be SKIPPED; these are"
+      puts "likely connection boundaries and this is likely the desired behavior."
+      puts "All boundaries required for exporting MUST be specified."
+      puts "If this warning does not make sense, contact Ethan Hereth:"
+      puts "SimCenter room 205 or ethan-hereth@utc.edu or 423.425.5431"
+      puts "or Bruce Hilbert:"
+      puts "SimCenter room 201 or bruce-hilbert@utc.edu or 423.425.5495"
+      puts "*********************************************************************"
+      puts ""
+      continue
+    }
+
     # Loop over registers to determine BC to block associations.
     for {set iReg 0} {$iReg < $nRegs} {incr iReg} {
       set l [lindex $regs $iReg]
 
       # Search for occurrence of boundary condition in selected blocks.
       if { [lsearch $selected(Blocks) [lindex $l 0]] != -1 } {
-
-        # Check for more than one connection type boundary condition, this is
-        # currently unsupported and connection boundary conditions in excess of
-        # one will be skipped completely.
-        if { $bcId == 2147483647 && $bcName == "Unspecified" } {
-          #puts "Here's a connection... ($iReg)\nbcId = $bcId, bcName = $bcName, register = $l"
-          if { $nRegs != 1 } {
-            puts ""
-            puts "WARNING: more than one connection boundary condition NOT SUPPORTED"
-            puts "         if this error does not make sense contact Ethan Hereth:"
-            puts "         SimCenter room 205 or ethan-hereth@utc.edu or 423.425.5431"
-            puts ""
-            break
-          }
-        }
 
         incr nBcs
 
@@ -336,7 +346,13 @@ if { [pw::Display selectEntities \
   set ::tk::dialog::file::showHiddenVar 0
   set ::tk::dialog::file::showHiddenBtn 1
 
-  set fileName [tk_getSaveFile -title "Enter facet file name." -defaultextension ".facet"]
+  # Set up file type filter.
+  set fileTypes {
+    { {Facet Files} {.facet} }
+    { {All Files}   * }
+  }
+
+  set fileName [tk_getSaveFile -title "Enter facet file name." -filetypes $fileTypes -defaultextension ".facet"]
 
   if { $fileName == "" } {
     puts ""
