@@ -254,7 +254,7 @@ if { [pw::Display selectEntities \
 
   set startTime [pwu::Time now]
 
-  puts "Selected $selected(Blocks) for export."
+  puts "    Selected [llength $selected(Blocks)] blocks for export."
 
   # NOTE: this is ALL boundary conditions in the Pointwise project; we will
   # determine which ones we actually need below.
@@ -273,27 +273,31 @@ if { [pw::Display selectEntities \
     set nRegs [$bc getRegisterCount]
     set regs [$bc getRegisters]
 
+    # Check for unspecified boundary conditions; these will be skipped and the
+    # user will be warned. All boundary conditions that are to be exported MUST
+    # be specified.
+    if { $bcName == "Unspecified" } {
+      puts ""
+      puts "*********************************************************************"
+      puts "WARNING: Unspecified boundary condition(s) detected."
+      puts "All Unspecified boundary conditions will be SKIPPED; these are"
+      puts "likely connection boundaries and this is likely the desired behavior."
+      puts "All boundaries required for exporting MUST be specified."
+      puts "If this warning does not make sense, contact Ethan Hereth:"
+      puts "SimCenter room 205 or ethan-hereth@utc.edu or 423.425.5431"
+      puts "or Bruce Hilbert:"
+      puts "SimCenter room 201 or bruce-hilbert@utc.edu or 423.425.5495"
+      puts "*********************************************************************"
+      puts ""
+      continue
+    }
+
     # Loop over registers to determine BC to block associations.
     for {set iReg 0} {$iReg < $nRegs} {incr iReg} {
       set l [lindex $regs $iReg]
 
       # Search for occurrence of boundary condition in selected blocks.
       if { [lsearch $selected(Blocks) [lindex $l 0]] != -1 } {
-
-      # Check for more than one connection type boundary condition, this is
-      # currently unsupported and connection boundary conditions in excess of
-      # one will be skipped completely.
-        if { $bcId == 2147483647 && $bcName == "Unspecified" } {
-        #puts "Here's a connection... ($iReg)\nbcId = $bcId, bcName = $bcName, register = $l"
-          if { $nRegs != 1 } {
-            puts ""
-            puts "WARNING: more than one connection boundary condition NOT SUPPORTED"
-            puts "         if this error does not make sense contact Ethan Hereth:"
-            puts "         SimCenter room 205 or ethan-hereth@utc.edu or 423.425.5431"
-            puts ""
-            break
-          }
-        }
 
         incr nBcs
         # Since we are counting required boundary conditions as we go, save off
@@ -348,8 +352,8 @@ if { [pw::Display selectEntities \
   set geomFile [append baseName "/geometry.params"]
 
   puts "Begin facet file export."
-  puts "Writing facet file: $fileName"
-  puts "Writing geometry file: $geomFile"
+  puts "    Writing facet file: $fileName"
+  puts "    Writing geometry file: $geomFile"
 
   set geomFp [open $geomFile w]
 
@@ -369,7 +373,7 @@ if { [pw::Display selectEntities \
   catch {set tmpdir $::env(TMP)}
   catch {set tmpdir $::env(TEMP)}
   set tempFile [file join $tmpdir "blockToFacet.[pid]" ]
-  puts "(Writing to temporary file $tempFile)"
+  puts "    (Writing to temporary file $tempFile)"
 
   set io [pw::Application begin GridExport $doms]
 
