@@ -360,11 +360,13 @@ if { [pw::Display selectEntities \
 
   if { [$io verify] != 1 } {
     puts "Error: io verify failed... exiting"
+    $io end
     exit
   }
 
   if { [$io canWrite] != 1 } {
     puts "Error: no data to export... exiting"
+    $io end
     exit
   }
 
@@ -376,8 +378,11 @@ if { [pw::Display selectEntities \
 
   if { [$io getDetails] != "" } {
     puts "Error: [$io getDetails]"
+    $io end
     exit
   }
+
+  $io end
 
 } else {
   puts "ERROR: You must select at least one block, exiting."
