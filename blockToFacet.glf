@@ -337,6 +337,12 @@ if { [pw::Display selectEntities \
   puts "Parsing boundary conditions complete. ($bcTotalTime seconds)"
   puts ""
 
+  # Check if the domains list has anything in it.
+  if { ![info exists doms] } {
+    puts "Error: No domains have been selected...  exiting."
+    exit
+  }
+
   # Do not time the file save dialog to make time reporting (insignificantly?)
   # more accurate.
   set totalTime [pwu::Time add $totalTime [pwu::Time elapsed $startTime]]
