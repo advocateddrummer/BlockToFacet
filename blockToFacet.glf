@@ -250,86 +250,97 @@ puts "Beginning blockToFacet script..."
 # Create a block selection mask.
 set mask [pw::Display createSelectionMask -requireBlock {}];
 
-# Create a block selection dialog.
-if { [pw::Display selectEntities \
-       -selectionmask $mask \
-       -description "Select block(s) to export." \
-     selected] } {
+#
+# Use selected entity(ies) or prompt user for selection if nothing is selected
+# at run time.
+#
+if { !([pw::Display getSelectedEntities -selectionmask $mask selected]) } {
 
-  set startTime [pwu::Time now]
-  set totalTime [pwu::Time set 0]
+  # Create a block selection dialog.
+  if { !([pw::Display selectEntities \
+         -selectionmask $mask \
+         -description "Select block(s) to export." \
+         selected]) } {
 
-  set blockString [expr { ([llength $selected(Blocks)] == 1) ? "block" : "blocks"}]
-  puts "    Selected [llength $selected(Blocks)] $blockString for export."
+    puts "ERROR: You must select at least one block, exiting."
+    exit
+  }
+}
 
-  # NOTE: this is ALL boundary conditions in the Pointwise project; we will
-  # determine which ones we actually need below.
-  set bcNames [pw::BoundaryCondition getNames]
-  set nBcs 0
-  set nDoms 0
+set startTime [pwu::Time now]
+set totalTime [pwu::Time set 0]
 
-  list geomParams
+set blockString [expr { ([llength $selected(Blocks)] == 1) ? "block" : "blocks"}]
+puts "    Selected [llength $selected(Blocks)] $blockString for export."
 
-  puts "Begin parsing boundary conditions."
-  set bcStartTime [pwu::Time now]
-  # Loop over boundary conditions and determine which ones to export.
-  foreach bcName $bcNames {
-    set bc [pw::BoundaryCondition getByName $bcName]
-    set bcId [$bc getId]
-    set nRegs [$bc getRegisterCount]
-    set regs [$bc getRegisters]
+# NOTE: this is ALL boundary conditions in the Pointwise project; we will
+# determine which ones we actually need below.
+set bcNames [pw::BoundaryCondition getNames]
+set nBcs 0
+set nDoms 0
 
-    #puts "*********************************************************************"
-    #puts "For boundary $bcName with tag $bcId"
-    #puts "    the number of registers is $nRegs"
-    #puts "    the registers are $regs"
-    #puts "*********************************************************************"
+list geomParams
 
-    # Check for unspecified boundary conditions; these will be skipped and the
-    # user will be warned. All boundary conditions that are to be exported MUST
-    # be specified. NOTE: the 'Unspecified' boundary comes up even if it is
-    # empty, hence the '$nRegs != 0' below to avoid printing the message
-    # unnecessarily.
-    if { $bcName == "Unspecified" && $nRegs != 0 } {
-      puts ""
-      puts "*********************************************************************"
-      puts "WARNING: Unspecified boundary condition(s) detected."
-      puts "All Unspecified boundary conditions will be SKIPPED; these are"
-      puts "likely connection boundaries and this is likely the desired behavior."
-      puts "All boundaries required for exporting MUST be specified."
-      puts "If this warning does not make sense, contact Ethan Hereth:"
-      puts "SimCenter room 205 or ethan-hereth@utc.edu or 423.425.5431"
-      puts "or Bruce Hilbert:"
-      puts "SimCenter room 201 or bruce-hilbert@utc.edu or 423.425.5495"
-      puts "*********************************************************************"
-      puts ""
-      continue
-    }
+puts "Begin parsing boundary conditions."
+set bcStartTime [pwu::Time now]
+# Loop over boundary conditions and determine which ones to export.
+foreach bcName $bcNames {
+set bc [pw::BoundaryCondition getByName $bcName]
+set bcId [$bc getId]
+set nRegs [$bc getRegisterCount]
+set regs [$bc getRegisters]
 
-    # Loop over registers to determine BC to block associations.
-    for {set iReg 0} {$iReg < $nRegs} {incr iReg} {
-      set l [lindex $regs $iReg]
+#puts "*********************************************************************"
+#puts "For boundary $bcName with tag $bcId"
+#puts "    the number of registers is $nRegs"
+#puts "    the registers are $regs"
+#puts "*********************************************************************"
 
-      # Search for occurrence of boundary condition in selected blocks.
-      if { [lsearch $selected(Blocks) [lindex $l 0]] != -1 } {
+# Check for unspecified boundary conditions; these will be skipped and the
+# user will be warned. All boundary conditions that are to be exported MUST
+# be specified. NOTE: the 'Unspecified' boundary comes up even if it is
+# empty, hence the '$nRegs != 0' below to avoid printing the message
+# unnecessarily.
+  if { $bcName == "Unspecified" && $nRegs != 0 } {
+  puts ""
+  puts "*********************************************************************"
+  puts "WARNING: Unspecified boundary condition(s) detected."
+  puts "All Unspecified boundary conditions will be SKIPPED; these are"
+  puts "likely connection boundaries and this is likely the desired behavior."
+  puts "All boundaries required for exporting MUST be specified."
+  puts "If this warning does not make sense, contact Ethan Hereth:"
+  puts "SimCenter room 205 or ethan-hereth@utc.edu or 423.425.5431"
+  puts "or Bruce Hilbert:"
+  puts "SimCenter room 201 or bruce-hilbert@utc.edu or 423.425.5495"
+  puts "*********************************************************************"
+  puts ""
+  continue
+}
 
-        incr nBcs
-        # Since we are counting required boundary conditions as we go, save off
-        # the following string to a list to be written to file later.
-        lappend geomParams [format "%10d %10d %11d %11s %-s" $bcId 0 1 "1e-6" $bcName]
+# Loop over registers to determine BC to block associations.
+for {set iReg 0} {$iReg < $nRegs} {incr iReg} {
+set l [lindex $regs $iReg]
 
-        set ents [$bc getEntities]
+# Search for occurrence of boundary condition in selected blocks.
+  if { [lsearch $selected(Blocks) [lindex $l 0]] != -1 } {
 
-        foreach dom $ents {
-          incr nDoms
+  incr nBcs
+  # Since we are counting required boundary conditions as we go, save off
+  # the following string to a list to be written to file later.
+  lappend geomParams [format "%10d %10d %11d %11s %-s" $bcId 0 1 "1e-6" $bcName]
 
-          # Create domain id to BC id map to be used while post processing the
-          # facet file.
-          dict set domToBC $nDoms $bcId
+  set ents [$bc getEntities]
 
-          lappend doms $dom
-        }
-        break
+  foreach dom $ents {
+  incr nDoms
+
+  # Create domain id to BC id map to be used while post processing the
+  # facet file.
+  dict set domToBC $nDoms $bcId
+
+  lappend doms $dom
+}
+break
       }
     }
   }
@@ -438,11 +449,6 @@ if { [pw::Display selectEntities \
   }
 
   $io end
-
-} else {
-  puts "ERROR: You must select at least one block, exiting."
-  exit
-}
 
 # Post process temporary file.
 puts "Beginning facet file post-processing."
