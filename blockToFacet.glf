@@ -285,10 +285,10 @@ puts "Begin parsing boundary conditions."
 set bcStartTime [pwu::Time now]
 # Loop over boundary conditions and determine which ones to export.
 foreach bcName $bcNames {
-set bc [pw::BoundaryCondition getByName $bcName]
-set bcId [$bc getId]
-set nRegs [$bc getRegisterCount]
-set regs [$bc getRegisters]
+  set bc    [pw::BoundaryCondition getByName $bcName]
+  set bcId  [$bc getId]
+  set nRegs [$bc getRegisterCount]
+  set regs  [$bc getRegisters]
 
 #puts "*********************************************************************"
 #puts "For boundary $bcName with tag $bcId"
@@ -302,153 +302,154 @@ set regs [$bc getRegisters]
 # empty, hence the '$nRegs != 0' below to avoid printing the message
 # unnecessarily.
   if { $bcName == "Unspecified" && $nRegs != 0 } {
-  puts ""
-  puts "*********************************************************************"
-  puts "WARNING: Unspecified boundary condition(s) detected."
-  puts "All Unspecified boundary conditions will be SKIPPED; these are"
-  puts "likely connection boundaries and this is likely the desired behavior."
-  puts "All boundaries required for exporting MUST be specified."
-  puts "If this warning does not make sense, contact Ethan Hereth:"
-  puts "SimCenter room 205 or ethan-hereth@utc.edu or 423.425.5431"
-  puts "or Bruce Hilbert:"
-  puts "SimCenter room 201 or bruce-hilbert@utc.edu or 423.425.5495"
-  puts "*********************************************************************"
-  puts ""
-  continue
-}
+    puts ""
+    puts "*********************************************************************"
+    puts "WARNING: Unspecified boundary condition(s) detected."
+    puts "All Unspecified boundary conditions will be SKIPPED; these are"
+    puts "likely connection boundaries and this is likely the desired behavior."
+    puts "All boundaries required for exporting MUST be specified."
+    puts "If this warning does not make sense, contact Ethan Hereth:"
+    puts "SimCenter room 205 or ethan-hereth@utc.edu or 423.425.5431"
+    puts "or Bruce Hilbert:"
+    puts "SimCenter room 201 or bruce-hilbert@utc.edu or 423.425.5495"
+    puts "*********************************************************************"
+    puts ""
+    continue
+  }
 
-# Loop over registers to determine BC to block associations.
-for {set iReg 0} {$iReg < $nRegs} {incr iReg} {
-set l [lindex $regs $iReg]
+  # Loop over registers to determine BC to block associations.
+  for {set iReg 0} {$iReg < $nRegs} {incr iReg} {
+    set l [lindex $regs $iReg]
 
-# Search for occurrence of boundary condition in selected blocks.
-  if { [lsearch $selected(Blocks) [lindex $l 0]] != -1 } {
+  # Search for occurrence of boundary condition in selected blocks.
+    if { [lsearch $selected(Blocks) [lindex $l 0]] != -1 } {
 
-  incr nBcs
-  # Since we are counting required boundary conditions as we go, save off
-  # the following string to a list to be written to file later.
-  lappend geomParams [format "%10d %10d %11d %11s %-s" $bcId 0 1 "1e-6" $bcName]
+      incr nBcs
+      # Since we are counting required boundary conditions as we go, save off
+      # the following string to a list to be written to file later.
+      lappend geomParams [format "%10d %10d %11d %11s %-s" $bcId 0 1 "1e-6" $bcName]
 
-  set ents [$bc getEntities]
+      set ents [$bc getEntities]
 
-  foreach dom $ents {
-  incr nDoms
+      foreach dom $ents {
+        incr nDoms
 
-  # Create domain id to BC id map to be used while post processing the
-  # facet file.
-  dict set domToBC $nDoms $bcId
+        # Create domain id to BC id map to be used while post processing the
+        # facet file.
+        dict set domToBC $nDoms $bcId
 
-  lappend doms $dom
-}
-break
+        lappend doms $dom
       }
+      break
     }
   }
-  set bcTotalTime [pwu::Time elapsed $bcStartTime]
-  puts "Parsing boundary conditions complete. ($bcTotalTime seconds)"
+}
+
+set bcTotalTime [pwu::Time elapsed $bcStartTime]
+puts "Parsing boundary conditions complete. ($bcTotalTime seconds)"
+puts ""
+
+# Check if the domains list has anything in it.
+if { ![info exists doms] } {
+  puts "Error: No domains have been selected...  exiting."
+  exit
+}
+
+# Do not time the file save dialog to make time reporting (insignificantly?)
+# more accurate.
+set totalTime [pwu::Time add $totalTime [pwu::Time elapsed $startTime]]
+
+# Name and hide this stupid window.
+wm title . "stupid window"
+set img [stupidWindowImage]
+label .l -image $img
+pack .l
+# Uncomment this to hide the stupid window.
+#wm iconify .
+
+# Do not show hidden directories.
+catch {tk_getSaveFile foo bar}
+set ::tk::dialog::file::showHiddenVar 0
+set ::tk::dialog::file::showHiddenBtn 1
+
+# Set up file type filter.
+set fileTypes {
+  { {Facet Files} {.facet} }
+  { {All Files}   * }
+}
+
+set fileName [tk_getSaveFile -title "Enter facet file name." -filetypes $fileTypes -defaultextension ".facet"]
+
+if { $fileName == "" } {
   puts ""
-
-  # Check if the domains list has anything in it.
-  if { ![info exists doms] } {
-    puts "Error: No domains have been selected...  exiting."
-    exit
-  }
-
-  # Do not time the file save dialog to make time reporting (insignificantly?)
-  # more accurate.
-  set totalTime [pwu::Time add $totalTime [pwu::Time elapsed $startTime]]
-
-  # Name and hide this stupid window.
-  wm title . "stupid window"
-  set img [stupidWindowImage]
-  label .l -image $img
-  pack .l
-  # Uncomment this to hide the stupid window.
-  #wm iconify .
-
-  # Do not show hidden directories.
-  catch {tk_getSaveFile foo bar}
-  set ::tk::dialog::file::showHiddenVar 0
-  set ::tk::dialog::file::showHiddenBtn 1
-
-  # Set up file type filter.
-  set fileTypes {
-    { {Facet Files} {.facet} }
-    { {All Files}   * }
-  }
-
-  set fileName [tk_getSaveFile -title "Enter facet file name." -filetypes $fileTypes -defaultextension ".facet"]
-
-  if { $fileName == "" } {
-    puts ""
-    puts "You must provide a file name to continue"
-    puts ""
-    exit
-  }
-
-  # Restart timer.
-  set startTime [pwu::Time now]
-
-  # Get facet file directory name.
-  set baseName [file dirname $fileName]
-
-  # Derive geometry.params file location.
-  set geomFile [append baseName "/geometry.params"]
-
-  puts "Begin facet file export."
-  puts "    Writing facet file: $fileName"
-  puts "    Writing geometry file: $geomFile"
-
-  set geomFp [open $geomFile w]
-
-  # Write geometry.params parameter file.
-  puts $geomFp "Number of boundaries\n$nBcs"
-  puts $geomFp "Boundary #   Layers     g_space     n_space             boundary name"
-  puts $geomFp "---------- ---------- ----------- ----------- ---------------------------------"
-
-  for {set iBc 0} {$iBc < $nBcs} {incr iBc} {
-    puts $geomFp [lindex $geomParams $iBc]
-  }
-  close $geomFp
-
-  # Create a (hopefully portable) temporary file.
-  set tmpdir [pwd]
-  if {[file exists "/tmp"]} { set tmpdir "/tmp"}
-  catch {set tmpdir $::env(TMP)}
-  catch {set tmpdir $::env(TEMP)}
-  set tempFile [file join $tmpdir "blockToFacet.[pid]" ]
-  puts "    (Writing to temporary file $tempFile)"
-
-  set io [pw::Application begin GridExport $doms]
-
-  $io initialize -type Xpatch $tempFile
-
-  if { [$io verify] != 1 } {
-    puts "Error: io verify failed... exiting"
-    $io end
-    exit
-  }
-
-  if { [$io canWrite] != 1 } {
-    puts "Error: no data to export... exiting"
-    $io end
-    exit
-  }
-
-  # Export the Xpatch file.
-  set writeStartTime [pwu::Time now]
-  $io write
-  set writeTotalTime [pwu::Time elapsed $writeStartTime]
-  puts "Facet file export complete. ($writeTotalTime seconds)"
+  puts "You must provide a file name to continue"
   puts ""
+  exit
+}
 
-  if { [$io getDetails] != "" } {
-    puts "Error: [$io getDetails]"
-    $io end
-    exit
-  }
+# Restart timer.
+set startTime [pwu::Time now]
 
+# Get facet file directory name.
+set baseName [file dirname $fileName]
+
+# Derive geometry.params file location.
+set geomFile [append baseName "/geometry.params"]
+
+puts "Begin facet file export."
+puts "    Writing facet file: $fileName"
+puts "    Writing geometry file: $geomFile"
+
+set geomFp [open $geomFile w]
+
+# Write geometry.params parameter file.
+puts $geomFp "Number of boundaries\n$nBcs"
+puts $geomFp "Boundary #   Layers     g_space     n_space             boundary name"
+puts $geomFp "---------- ---------- ----------- ----------- ---------------------------------"
+
+for {set iBc 0} {$iBc < $nBcs} {incr iBc} {
+  puts $geomFp [lindex $geomParams $iBc]
+}
+close $geomFp
+
+# Create a (hopefully portable) temporary file.
+set tmpdir [pwd]
+if {[file exists "/tmp"]} { set tmpdir "/tmp"}
+catch {set tmpdir $::env(TMP)}
+catch {set tmpdir $::env(TEMP)}
+set tempFile [file join $tmpdir "blockToFacet.[pid]" ]
+puts "    (Writing to temporary file $tempFile)"
+
+set io [pw::Application begin GridExport $doms]
+
+$io initialize -type Xpatch $tempFile
+
+if { [$io verify] != 1 } {
+  puts "Error: io verify failed... exiting"
   $io end
+  exit
+}
+
+if { [$io canWrite] != 1 } {
+  puts "Error: no data to export... exiting"
+  $io end
+  exit
+}
+
+# Export the Xpatch file.
+set writeStartTime [pwu::Time now]
+$io write
+set writeTotalTime [pwu::Time elapsed $writeStartTime]
+puts "Facet file export complete. ($writeTotalTime seconds)"
+puts ""
+
+if { [$io getDetails] != "" } {
+  puts "Error: [$io getDetails]"
+  $io end
+  exit
+}
+
+$io end
 
 # Post process temporary file.
 puts "Beginning facet file post-processing."
