@@ -246,7 +246,8 @@ proc stupidWindowImage {} {
 }
 
 # TODO: check if this works, die cleanly if it doesn't.
-set retValue [source [file join [file dirname [info script]] "/simcenter/meshdev/PointwiseGlyph/pwio.glf"]]
+#set retValue [source [file join [file dirname [info script]] "/simcenter/meshdev/PointwiseGlyph/pwio.glf"]]
+set retValue [source [file join [file dirname [info script]] "/home/ehereth/Grid/dev/Glyph/GridCoordEnum/pwio.glf"]]
 
 puts "Beginning blockToFacet script..."
 
