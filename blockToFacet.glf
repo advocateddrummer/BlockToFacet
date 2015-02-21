@@ -6,6 +6,32 @@ package require PWI_Glyph 2.17.1
 
 pw::Script loadTk
 
+# Get the intersection of two (or more) lists.
+# Stolen from http://wiki.tcl.tk/43
+# Returns the intersection of the first list with all following lists.
+proc intersect args {
+  set intersection {}
+
+  # Loop over elements in first list.
+  foreach element [lindex $args 0] {
+    set found 1
+
+    # Search for current element in all remaining lists.
+    foreach list [lrange $args 1 end] {
+      if {[lsearch -exact $list $element] < 0} {
+        set found 0; break
+      }
+    }
+
+    if {$found} {
+      lappend intersection $element
+    }
+  }
+
+  # Return intersection.
+  return $intersection
+}
+
 proc stupidWindowImage {} {
   set logoData "
   R0lGODlhuQDQAPf/AAAAAAEBAQICAgMDAwQEBAUFBQYGBgcHBwgICAkJCQoKCgsLCwwMDA0NDQ4O
@@ -273,34 +299,50 @@ set totalTime [pwu::Time set 0]
 set blockString [expr { ([llength $selected(Blocks)] == 1) ? "block" : "blocks"}]
 puts "    Selected [llength $selected(Blocks)] $blockString for export."
 
-# NOTE: this is ALL boundary conditions in the Pointwise project; we will
-# determine which ones we actually need below.
-set bcNames [pw::BoundaryCondition getNames]
-set nBcs 0
-set nDoms 0
+set domsOrig {}
+set doms {}
 
 list geomParams
 
 puts "Begin parsing boundary conditions."
 set bcStartTime [pwu::Time now]
-# Loop over boundary conditions and determine which ones to export.
-foreach bcName $bcNames {
-  set bc    [pw::BoundaryCondition getByName $bcName]
-  set bcId  [$bc getId]
-  set nRegs [$bc getRegisterCount]
-  set regs  [$bc getRegisters]
 
-#puts "*********************************************************************"
-#puts "For boundary $bcName with tag $bcId"
-#puts "    the number of registers is $nRegs"
-#puts "    the registers are $regs"
-#puts "*********************************************************************"
+# Get a list of all domains that make up the selected block(s).
+foreach block $selected(Blocks) {
+  # Get number of faces in current block.
+  set nFaces [$block getFaceCount]
 
-# Check for unspecified boundary conditions; these will be skipped and the
-# user will be warned. All boundary conditions that are to be exported MUST
-# be specified. NOTE: the 'Unspecified' boundary comes up even if it is
-# empty, hence the '$nRegs != 0' below to avoid printing the message
-# unnecessarily.
+  for {set iFace 1} {$iFace <= $nFaces} {incr iFace} {
+    # Get current face.
+    set face [$block getFace $iFace]
+
+    # Get domains in face.
+    lappend domsOrig [$face getDomains]
+  }
+}
+
+# Get list of boundary conditions associated with domains, one per domain.
+set bcs [pw::BoundaryCondition getByEntities $domsOrig]
+
+# Extract unique boundary conditions from list.
+set bcs [lsort -unique $bcs]
+
+set nDoms 0
+set nBcs  0
+
+# Loop over unique boundary conditions.
+foreach bc $bcs {
+
+  set bcName [$bc getName]
+  set bcId   [$bc getId]
+  set bcDoms [$bc getEntities]
+  set nRegs  [$bc getRegisterCount]
+
+  # Check for unspecified boundary conditions; these will be skipped and the
+  # user will be warned. All boundary conditions that are to be exported MUST
+  # be specified. NOTE: the 'Unspecified' boundary comes up even if it is
+  # empty, hence the '$nRegs != 0' below to avoid printing the message
+  # unnecessarily.
   if { $bcName == "Unspecified" && $nRegs != 0 } {
     puts ""
     puts "*********************************************************************"
@@ -308,7 +350,7 @@ foreach bcName $bcNames {
     puts "All Unspecified boundary conditions will be SKIPPED; these are"
     puts "likely connection boundaries and this is likely the desired behavior."
     puts "All boundaries required for exporting MUST be specified."
-    puts "If this warning does not make sense, contact Ethan Hereth:"
+    puts "If this warning does needs clarification, contact Ethan Hereth:"
     puts "SimCenter room 205 or ethan-hereth@utc.edu or 423.425.5431"
     puts "or Bruce Hilbert:"
     puts "SimCenter room 201 or bruce-hilbert@utc.edu or 423.425.5495"
@@ -317,31 +359,29 @@ foreach bcName $bcNames {
     continue
   }
 
-  # Loop over registers to determine BC to block associations.
-  for {set iReg 0} {$iReg < $nRegs} {incr iReg} {
-    set l [lindex $regs $iReg]
+  # Count number of boundaries that will be exported.
+  incr nBcs
 
-  # Search for occurrence of boundary condition in selected blocks.
-    if { [lsearch $selected(Blocks) [lindex $l 0]] != -1 } {
+  # Since we are counting required boundary conditions as we go, save off the
+  # following string to a list to be written to file later.
+  lappend geomParams [format "%10d %10d %11d %11s %-s" $bcId 0 1 "1e-6" $bcName]
 
-      incr nBcs
-      # Since we are counting required boundary conditions as we go, save off
-      # the following string to a list to be written to file later.
-      lappend geomParams [format "%10d %10d %11d %11s %-s" $bcId 0 1 "1e-6" $bcName]
+  # Extract ONLY the domains that exist in BOTH the list of domains contained
+  # by the selected block(s) AND the list of domains contained by the boundary
+  # condition. It is technically possible that the boundary condition contains
+  # more domains than the block(s) although this is probably a rare corner
+  # case.
+  set intersection [intersect $bcDoms $domsOrig]
 
-      set ents [$bc getEntities]
+  # Add collected domains to list of domains to be exported.
+  foreach dom $intersection {
+    incr nDoms
 
-      foreach dom $ents {
-        incr nDoms
+    # Create domain id to BC id map to be used while post processing the facet
+    # file.
+    dict set domToBC $nDoms $bcId
 
-        # Create domain id to BC id map to be used while post processing the
-        # facet file.
-        dict set domToBC $nDoms $bcId
-
-        lappend doms $dom
-      }
-      break
-    }
+    lappend doms $dom
   }
 }
 
