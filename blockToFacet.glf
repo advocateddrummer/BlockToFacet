@@ -500,7 +500,10 @@ set tempFp [open $tempFile "r"]
 set facetFp [open $fileName "w"]
 
 # Copy header information.
-puts $facetFp [gets $tempFp]
+set header [gets $tempFp]
+# Add signature.
+append header " by blockToFacet.glf; see \[https://github.com/advocateddrummer/BlockToFacet\]"
+puts $facetFp $header
 puts $facetFp [gets $tempFp]
 puts $facetFp [gets $tempFp]
 puts $facetFp [gets $tempFp]
