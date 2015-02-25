@@ -299,9 +299,6 @@ set totalTime [pwu::Time set 0]
 set blockString [expr { ([llength $selected(Blocks)] == 1) ? "block" : "blocks"}]
 puts "    Selected [llength $selected(Blocks)] $blockString for export."
 
-set domsOrig {}
-set doms {}
-
 list geomParams
 
 puts "Begin parsing boundary conditions."
@@ -393,6 +390,8 @@ puts ""
 if { ![info exists doms] } {
   puts "Error: No domains have been selected...  exiting."
   exit
+} else {
+  puts "Selected $nBcs boundary condition(s) \[$nDoms domains\]"
 }
 
 # Do not time the file save dialog to make time reporting (insignificantly?)
