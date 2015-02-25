@@ -316,8 +316,8 @@ foreach block $selected(Blocks) {
     # Get current face.
     set face [$block getFace $iFace]
 
-    # Get domains in face.
-    lappend domsOrig [$face getDomains]
+    # Get domains in face; (the {*} syntax concatenates lists).
+    lappend domsOrig {*}[$face getDomains]
   }
 }
 
