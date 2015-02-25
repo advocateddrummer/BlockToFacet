@@ -271,6 +271,7 @@ proc stupidWindowImage {} {
   return [image create photo -format GIF -data $logoData]
 }
 
+# TODO: Add option to also export the connection domains; maybe with a GUI.
 puts "Beginning blockToFacet script..."
 
 # Create a block selection mask.
@@ -391,7 +392,8 @@ if { ![info exists doms] } {
   puts "Error: No domains have been selected...  exiting."
   exit
 } else {
-  puts "Selected $nBcs boundary condition(s) \[$nDoms domains\]"
+  set bcString [expr { ($nBcs == 1) ? "boundary condition" : "boundary conditions"}]
+  puts "Selected $nBcs $bcString \[$nDoms domains\]"
 }
 
 # Do not time the file save dialog to make time reporting (insignificantly?)
