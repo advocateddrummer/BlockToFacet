@@ -6,6 +6,9 @@ package require PWI_Glyph 2.17.1
 
 pw::Script loadTk
 
+namespace eval ::tk::dialog {}
+namespace eval ::tk::dialog::file {}
+
 proc stupidWindowImage {} {
   set logoData "
   R0lGODlhuQDQAPf/AAAAAAEBAQICAgMDAwQEBAUFBQYGBgcHBwgICAkJCQoKCgsLCwwMDA0NDQ4O
